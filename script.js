@@ -5,13 +5,13 @@ const scoreBox = document.getElementById('score-box')
 
 let score = 0;
 const fps = 1;
-const pixelSize = 40;
+const pixelSize = 50;
 const rows = Math.floor(window.innerHeight / pixelSize) -  2;
 const cols = Math.floor(window.innerWidth / pixelSize) - 2;
 const canvasWidth = cols * pixelSize;
 const canvasHeight = rows * pixelSize;
 
-const colors = ['white', 'red', 'royalblue', 'lightgreen', 'yellow', 'orange', 'crimson', 'pink', 'gray']
+const colors = ['white', 'red', 'royalblue', 'lightgreen', 'yellow', 'orange', 'crimson', 'pink', 'rgb(50, 30, 30)']
 const shapes = [
   [[0,0], [1,0], [1,1]],
   [[0,0], [1,0], [0,1], [1,1]],
@@ -36,6 +36,13 @@ const gameCtx = gameCanvas.getContext("2d");
 
 
 const gameMatrix = Array.from({length: rows}, _ => Array.from({length: cols}, _ => 0));
+
+let borderColorIndex = colors.length - 1;
+gameMatrix[rows - 1].fill(borderColorIndex)
+for(let y=0; y<rows; y++) {
+  gameMatrix[y][0] = borderColorIndex;
+  gameMatrix[y][cols - 1] = borderColorIndex;
+}
 
 class Shape {
   constructor({ pos, size, canvasWidth, canvasHeight, shape, colorIndex, color }) {
@@ -138,6 +145,8 @@ class Shape {
       this.pos.x + this.eages.x + this.size > this.canvas.w ||
       this.pos.y + this.eages.y + this.size > this.canvas.h ||
       this.shape.some(([x, y]) => (
+        py + y < gameMatrix.length && 
+        px + x < gameMatrix[0].length &&
         gameMatrix[py + y][px + x] !== 0
       ))
     )
@@ -150,7 +159,11 @@ class Shape {
     let minX = Math.min(...this.shape.map(([x, y]) => x));
     let minY = Math.min(...this.shape.map(([x, y]) => y));
     this.shape = this.shape.map(([x, y]) => [x - minX, y - minY]);
-
+  
+    this.eages = {
+      x: Math.max(...this.shape.map(e => e[0])),
+      y: Math.max(...this.shape.map(e => e[1]))
+    }
     if(this.hasColied(gameMatrix)){ 
       this.shape = JSON.parse(oldShape)
       return;
@@ -200,7 +213,7 @@ function drawGameMatrix() {
 
 function createShape() {
   const shape = shapes[Math.floor(Math.random() * shapes.length)];
-  const colorIndex = Math.floor(Math.random() * (colors.length - 1)) + 1
+  const colorIndex = Math.floor(Math.random() * (colors.length - 2)) + 1
   const xe = Math.max(...shape.map(e => e[0]))
   return new Shape({
     pos: {x: pixelSize * Math.floor(cols / 2 - xe), y: 0},
@@ -211,11 +224,14 @@ function createShape() {
 
 
 function cleanFullRows() {
-  for(let row=0; row<rows; row++) {
+  for(let row=0; row<rows-1; row++) {
     if(gameMatrix[row].some(e => e === 0)) continue;
     
     scoreBox.innerHTML = ++score;
-    gameMatrix[row].fill(0);
+
+    for(let i=1; i<cols-1; i++) 
+      gameMatrix[row][i] = 0;
+
     for(let i=row; i>0; i--) {
       [gameMatrix[i], gameMatrix[i-1]] = [gameMatrix[i-1], gameMatrix[i]]
     }
