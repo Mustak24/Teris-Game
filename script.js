@@ -1,17 +1,17 @@
 const bgCanvas = document.getElementById("background-canvas");
 const gameCanvas = document.getElementById("game-canvas");
-const nextShapeCanvas = document.getElementById('next-shape-canvas');
+const nextShapeBox = document.getElementById('next-shape-box');
 const scoreBox = document.getElementById('score-box')
 
 let score = 0;
 const fps = 1;
 const pixelSize = 40;
-const rows = 15;
-const cols = 20;
+const rows = Math.floor(window.innerHeight / pixelSize) -  2;
+const cols = Math.floor(window.innerWidth / pixelSize) - 2;
 const canvasWidth = cols * pixelSize;
 const canvasHeight = rows * pixelSize;
 
-const colors = ['white', 'red', 'royalblue', 'lightgreen', 'yellow', 'orange', 'crimson', 'pink', 'sky']
+const colors = ['white', 'red', 'royalblue', 'lightgreen', 'yellow', 'orange', 'crimson', 'pink', 'gray']
 const shapes = [
   [[0,0], [1,0], [1,1]],
   [[0,0], [1,0], [0,1], [1,1]],
@@ -30,13 +30,9 @@ bgCanvas.height = canvasHeight;
 gameCanvas.width = canvasWidth;
 gameCanvas.height = canvasHeight;
 
-nextShapeCanvas.width = 400;
-nextShapeCanvas.height = 300;
-
 
 const bgCtx = bgCanvas.getContext("2d");
 const gameCtx = gameCanvas.getContext("2d");
-const nextShapeCtx = nextShapeCanvas.getContext('2d');
 
 
 const gameMatrix = Array.from({length: rows}, _ => Array.from({length: cols}, _ => 0));
@@ -146,6 +142,21 @@ class Shape {
       ))
     )
   }
+
+  rotate(gameMatrix) {
+    const oldShape = JSON.stringify(this.shape);
+    this.shape = this.shape.map(e => e.reverse());
+
+    if(this.hasColied(gameMatrix)){ 
+      this.shape = JSON.parse(oldShape)
+      return;
+    }
+
+    this.eages = {
+      x: Math.max(...this.shape.map(e => e[0])),
+      y: Math.max(...this.shape.map(e => e[1]))
+    }
+  }
 }
 
 
@@ -207,15 +218,42 @@ function cleanFullRows() {
   }
 }
 
+function drawShapeMat(shape) {
+  console.log(shape)
+  const box = document.createElement('div');
+  box.classList.add('box');
+
+  const rows = Math.floor(shape.eages.y / pixelSize);
+  const cols = Math.floor(shape.eages.x / pixelSize);
+
+  for(let y=0; y<=rows; y++) {
+    const row = document.createElement('div');
+    row.classList.add('row');
+
+    for(let x=0; x<=cols; x++) {
+      const col = document.createElement('div');
+      col.classList.add('col');
+      col.style.backgroundColor = shape.color;
+      col.style.width = pixelSize + 'px';
+
+      row.appendChild(col);
+    }
+
+    box.appendChild(row);
+  }
+
+  nextShapeBox.innerHTML = '';
+  nextShapeBox.appendChild(box);
+
+}
 
 
 bgCanvas.style.backgroundColor = 'white';
 let shape = [createShape(), createShape()];
 drawGameMatrix()
 drawGrid();
-nextShapeCtx.translate(-200, shape[0].eages.y / 2)
-shape[1].show(nextShapeCtx)
-console.log(nextShapeCtx)
+drawShapeMat(shape[1])
+
 
 function animation() {
   gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
@@ -223,13 +261,12 @@ function animation() {
   if(!shape[0].hasMoving) {
     shape.shift()
     shape.push(createShape());
-    nextShapeCtx.clearRect(0, 0, 1000, 1000);
     bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
     bgCanvas.style.backgroundColor = 'white'
+    drawShapeMat(shape[1])
     drawGrid();
     cleanFullRows();
     drawGameMatrix();
-    shape[1].show(nextShapeCtx)
   }
 
   shape[0].show(gameCtx);
@@ -262,6 +299,9 @@ function handleKeyUpEvent({key}) {
     case 'ArrowDown':
       shape[0].update(gameMatrix);
       break;
+
+    case " ":
+      shape[0].rotate(gameMatrix)
   }
 
   shape[0].show(gameCtx)
