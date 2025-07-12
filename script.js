@@ -145,7 +145,11 @@ class Shape {
 
   rotate(gameMatrix) {
     const oldShape = JSON.stringify(this.shape);
-    this.shape = this.shape.map(e => e.reverse());
+    this.shape = this.shape = this.shape.map(([x, y]) => [y, -x]);
+
+    let minX = Math.min(...this.shape.map(([x, y]) => x));
+    let minY = Math.min(...this.shape.map(([x, y]) => y));
+    this.shape = this.shape.map(([x, y]) => [x - minX, y - minY]);
 
     if(this.hasColied(gameMatrix)){ 
       this.shape = JSON.parse(oldShape)
@@ -233,7 +237,8 @@ function drawShapeMat(shape) {
     for(let x=0; x<=cols; x++) {
       const col = document.createElement('div');
       col.classList.add('col');
-      col.style.backgroundColor = shape.color;
+      if (shape.shape.some(([sx, sy]) => sx === x && sy === y))
+        col.style.backgroundColor = shape.color;
       col.style.width = pixelSize + 'px';
 
       row.appendChild(col);
