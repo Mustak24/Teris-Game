@@ -6,6 +6,8 @@ html, body {
     align-items: center;
     justify-content: center;
     background-color: black;
+    gap: 40px;
+    flex-wrap: wrap-reverse;
 }
 
 
@@ -22,5 +24,18 @@ html, body {
 
     #game-canvas{
         position: absolute;
+    }
+}
+
+
+.info-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+
+    #next-shape-canvas {
+        border: 2px solid white;
     }
 }

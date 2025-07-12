@@ -1,19 +1,27 @@
 const bgCanvas = document.getElementById("background-canvas");
 const gameCanvas = document.getElementById("game-canvas");
+const nextShapeCanvas = document.getElementById('next-shape-canvas');
+const scoreBox = document.getElementById('score-box')
 
-const fps = 2
+let score = 0;
+const fps = 1;
 const pixelSize = 40;
 const rows = 15;
 const cols = 20;
 const canvasWidth = cols * pixelSize;
 const canvasHeight = rows * pixelSize;
 
-const colors = ['white', 'red', 'royalblue', 'lightgreen', 'yellow', 'orange']
+const colors = ['white', 'red', 'royalblue', 'lightgreen', 'yellow', 'orange', 'crimson', 'pink', 'sky']
 const shapes = [
-  [[0,0], [1,0], [1,1], [2,1], [2, 2]],
+  [[0,0], [1,0], [1,1]],
   [[0,0], [1,0], [0,1], [1,1]],
   [[0,0], [0,1], [0,2], [0,3]],
-  [[1,0], [0,1], [1,1], [2,1]]
+  [[1,0], [0,1], [1,1], [2,1]],
+  [[0,0]],
+  [[0,0], [1,0], [1,1], [2,1]],
+  [[0,0], [0,1], [0,2]],
+  [[0,0], [0,2], [1,0], [1,1], [1,2]],
+  [[0,0], [1,0], [1,1], [1,2]]
 ]
 
 bgCanvas.width = canvasWidth;
@@ -22,8 +30,14 @@ bgCanvas.height = canvasHeight;
 gameCanvas.width = canvasWidth;
 gameCanvas.height = canvasHeight;
 
+nextShapeCanvas.width = 400;
+nextShapeCanvas.height = 300;
+
+
 const bgCtx = bgCanvas.getContext("2d");
 const gameCtx = gameCanvas.getContext("2d");
+const nextShapeCtx = nextShapeCanvas.getContext('2d');
+
 
 const gameMatrix = Array.from({length: rows}, _ => Array.from({length: cols}, _ => 0));
 
@@ -64,45 +78,28 @@ class Shape {
     const px = Math.floor(this.pos.x / this.size);
     const py = Math.floor(this.pos.y / this.size);
 
-    const bottomEages = this.getBottomEages();
-    const hasColied =
-      py * this.size + this.eages.y + this.size >= this.canvas.h ||
-      bottomEages.some(([x, y]) => gameMatrix[y + py + 1][px + x] !== 0);
+    this.pos.y += this.size
 
-    if (hasColied) {
+
+    if (this.hasColied(gameMatrix)) {
+      this.pos.y -= this.size;
       this.hasMoving = false;
 
       for (let [x, y] of this.shape) {
         gameMatrix[py + y][px + x] = this.colorIndex;
       }
-
-      return;
     }
-
-    this.pos.y += this.size;
   }
 
   moveLeft(gameMatrix) {
-    const px = Math.floor(this.pos.x / this.size);
-    const py = Math.floor(this.pos.y / this.size);
+    this.pos.x -= this.size;
 
-    const leftEages = this.getLeftEages();
-    const hasColied =
-      px <= 0 || leftEages.some(([x, y]) => gameMatrix[py + y][px + x - 1] !== 0);
-
-    if (!hasColied) this.pos.x -= this.size;
+    if(this.hasColied(gameMatrix)) this.pos.x += this.size;
   }
 
   moveRight(gameMatrix) {
-    const px = Math.floor(this.pos.x / this.size);
-    const py = Math.floor(this.pos.y / this.size);
-
-    const rightEages = this.getRightEages();
-    const hasColied =
-      px * this.size + this.eages.x + this.size >= this.canvas.w ||
-      rightEages.some(([x, y]) => gameMatrix[py + y][px + x + 1] !== 0);
-
-    if (!hasColied) this.pos.x += this.size;
+    this.pos.x += this.size;
+    if(this.hasColied(gameMatrix)) this.pos.x -= this.size;
   }
 
   getBottomEages() {
@@ -133,6 +130,21 @@ class Shape {
     }
 
     return Array.from(dic);
+  }
+  
+
+  hasColied(gameMatrix) {
+    const px = Math.floor(this.pos.x / this.size);
+    const py = Math.floor(this.pos.y / this.size);
+
+    return (
+      this.pos.x < 0 ||
+      this.pos.x + this.eages.x + this.size > this.canvas.w ||
+      this.pos.y + this.eages.y + this.size > this.canvas.h ||
+      this.shape.some(([x, y]) => (
+        gameMatrix[py + y][px + x] !== 0
+      ))
+    )
   }
 }
 
@@ -172,13 +184,13 @@ function drawGameMatrix() {
 
 
 function createShape() {
-  const randomIndex = Math.floor(Math.random() * shapes.length)
-  const shape = shapes[randomIndex];
+  const shape = shapes[Math.floor(Math.random() * shapes.length)];
+  const colorIndex = Math.floor(Math.random() * (colors.length - 1)) + 1
   const xe = Math.max(...shape.map(e => e[0]))
   return new Shape({
     pos: {x: pixelSize * Math.floor(cols / 2 - xe), y: 0},
     size: pixelSize, shape, canvasHeight, canvasWidth, 
-    colorIndex: randomIndex + 1, color: colors[randomIndex + 1]
+    colorIndex, color: colors[colorIndex]
   })
 }
 
@@ -187,6 +199,7 @@ function cleanFullRows() {
   for(let row=0; row<rows; row++) {
     if(gameMatrix[row].some(e => e === 0)) continue;
     
+    scoreBox.innerHTML = ++score;
     gameMatrix[row].fill(0);
     for(let i=row; i>0; i--) {
       [gameMatrix[i], gameMatrix[i-1]] = [gameMatrix[i-1], gameMatrix[i]]
@@ -197,24 +210,30 @@ function cleanFullRows() {
 
 
 bgCanvas.style.backgroundColor = 'white';
-let shape = createShape();
+let shape = [createShape(), createShape()];
 drawGameMatrix()
-drawGrid()
+drawGrid();
+nextShapeCtx.translate(-200, shape[0].eages.y / 2)
+shape[1].show(nextShapeCtx)
+console.log(nextShapeCtx)
 
 function animation() {
   gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-  if(!shape.hasMoving) {
-    shape = createShape();
+  if(!shape[0].hasMoving) {
+    shape.shift()
+    shape.push(createShape());
+    nextShapeCtx.clearRect(0, 0, 1000, 1000);
     bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
     bgCanvas.style.backgroundColor = 'white'
     drawGrid();
     cleanFullRows();
     drawGameMatrix();
+    shape[1].show(nextShapeCtx)
   }
 
-  shape.show(gameCtx);
-  shape.update(gameMatrix);
+  shape[0].show(gameCtx);
+  shape[0].update(gameMatrix);
 
   setTimeout(() => {
     requestAnimationFrame(animation);
@@ -226,25 +245,26 @@ requestAnimationFrame(animation)
 
 
 function handleKeyUpEvent({key}) {  
-  
+  gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+
   switch ( key ) {
     case 'a':      
     case 'ArrowLeft':
-      shape.moveLeft(gameMatrix);
+      shape[0].moveLeft(gameMatrix);
       break;
     
     case 'd':
     case 'ArrowRight':
-      shape.moveRight(gameMatrix);
+      shape[0].moveRight(gameMatrix);
       break;
       
     case 's':
     case 'ArrowDown':
-      shape.update(gameMatrix);
+      shape[0].update(gameMatrix);
       break;
   }
 
-  shape.show()
+  shape[0].show(gameCtx)
 }
 
 
